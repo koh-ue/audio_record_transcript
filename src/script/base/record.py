@@ -20,11 +20,11 @@ END = "\033[0m"
 
 parser = argparse.ArgumentParser(add_help=True)
 
-parser.add_argument('-d', '--debug', action='store_true', help='show device list and channel index.')
-parser.add_argument('-m', '--mode', type=str, choices=['record', 'read', 'play'], default='record')
+parser.add_argument('-a', '--action', type=str, choices=['get_mic', 'record', 'read', 'play'], default='record',\
+                    help='get_mic->shows a microphone list. record->records an audio. read->shows waves and FFT of an audio file. play->plays an audio file.')
 parser.add_argument('-c', '--channel', type=int, default=0, help='CHANNEL must be from channel index from --debug.')
-parser.add_argument('-t', '--recording_time', type=str, default='0-0-5', help='RECOEDING_TIME should be [HOURS]-[MINUTES]-[SECONDS].')
-parser.add_argument('-f', '--file_name', type=str, default='', help='FILE_NAME is for read and play.')
+parser.add_argument('-r', '--recording_time', type=str, default='0-0-5', help='RECOEDING_TIME should be [HOURS]-[MINUTES]-[SECONDS].')
+parser.add_argument('-w', '--wav_file_name', type=str, default='', help='WAV_FILE_NAME is for read and play.')
 
 args = parser.parse_args()
 
@@ -52,7 +52,7 @@ def FormatTime(time_in_hours_minutes_seconds):
         sys.exit()
     return np_time
  
-def MakeWavFile(Record_Seconds = 2, save = True):
+def MakeWavFile(Record_Seconds, channel, save = True):
     """
     Redord audio and save.
     """
@@ -69,7 +69,7 @@ def MakeWavFile(Record_Seconds = 2, save = True):
                     rate = RATE,
                     input = True,
                     frames_per_buffer = chunk,
-                    input_device_index = args.channel)
+                    input_device_index = channel)
     
     print("Now Recording...")
     all_data = []
@@ -92,8 +92,10 @@ def MakeWavFile(Record_Seconds = 2, save = True):
     p.terminate()
 
     dt_now = datetime.datetime.now()
-    FileName = dt_now.strftime('records/%Y-%m-%d-%H-%M-%S.wav')
+    dir_name = dt_now.strftime('records/%Y-%m-%d-%H-%M-%S/')
+    os.makedirs(dir_name, exist_ok=True)
     
+    FileName = dir_name + 'audio.wav'
     if save:
         wavFile = wave.open(FileName, 'wb')
         wavFile.setnchannels(CHANNELS)
@@ -159,19 +161,20 @@ def PlayWavFie(Filename):
     
 
 if __name__ == "__main__":
-    if args.debug:
+    if args.action == 'get_mic':
         mic_list = GetMicIndex()
         print(mic_list)
-        sys.exit()
 
-    if args.mode == 'record':
+    elif args.action == 'record':
         np_time = FormatTime(args.recording_time)
         time_in_second = np.sum(np_time * np.array([3600, 60, 1]))
-        MakeWavFile(Record_Seconds = time_in_second)
-    elif args.mode == 'read':
-        ReadWavFile(args.file_name)
-    elif args.mode == 'play':
-        PlayWavFie(args.file_name)
+        MakeWavFile(Record_Seconds = time_in_second, channel = args.channel)
+
+    elif args.action == 'read':
+        ReadWavFile(args.wav_file_name)
+
+    elif args.action == 'play':
+        PlayWavFie(args.wav_file_name)
     
 
 
